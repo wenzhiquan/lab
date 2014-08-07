@@ -10,13 +10,13 @@ class FTPHandler(object):
 
     def __init__(self):
         self.timecount = 0
-        self.log_file_name = "/home/wenzhiquan/下载/test//log.txt"
+        self.directory_name = "/home/wenzhiquan/下载/test/"
 
     def main_server_connect(self):
         try:
             self.conn = FTP('10.108.104.82', 'anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
-            os.chdir('/home/wenzhiquan/下载/test/')                # 本地下载目录
+            os.chdir(self.directory_name)                # 本地下载目录
             print "Main FTP server connected..."
         except:
             print "Main FTP server connecting faild..."
@@ -26,7 +26,7 @@ class FTPHandler(object):
         try:
             self.conn = FTP('10.108.106.124', 'anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
-            os.chdir('/home/wenzhiquan/下载/test/')                # 本地下载目录
+            os.chdir(self.directory_name)                # 本地下载目录
             print "Backup FTP server connected..."
         except:
             print "Backup FTP server connecting faild..."
@@ -43,14 +43,14 @@ class FTPHandler(object):
     def walk(self, next_dir):
         # print 'Walking to', next_dir
         self.conn.cwd(next_dir)
-        try:
-            os.mkdir(next_dir)
-        except OSError:
-            pass
-        os.chdir(next_dir)
+        # try:
+        #     os.mkdir(next_dir)
+        # except OSError:
+        #     pass
+        # os.chdir(next_dir)
 
         ftp_curr_dir = self.conn.pwd()
-        local_curr_dir = os.getcwd()
+        # local_curr_dir = os.getcwd()
 
         files, dirs = self.get_dirs_files()
         # print "FILES: ", files
@@ -70,7 +70,7 @@ class FTPHandler(object):
                 data = readf.readline()
                 readf.close()
                 now = datetime.now()
-                log_file = open(self.log_file_name, 'ab')
+                log_file = open("%s" % (self.directory_name + f[:-16] + "log.txt"), 'ab')
                 if data != "[END]":
                     os.remove(f)
                     log_file.write("%26s%30s%10s\n" %(now, f, 'False'))
@@ -80,7 +80,7 @@ class FTPHandler(object):
                     log_file.write("%26s%30s%10s\n" %(now, f, 'True'))
                     log_file.close()
         for d in dirs:
-            os.chdir(local_curr_dir)
+            # os.chdir(local_curr_dir)
             self.conn.cwd(ftp_curr_dir)
             self.walk(d)
 
