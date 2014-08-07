@@ -4,11 +4,13 @@ import os
 import sys
 from ftplib import FTP
 import time
+from datetime import datetime
 
 class FTPHandler(object):
 
     def __init__(self):
         self.timecount = 0
+        self.log_file_name = "/home/wenzhiquan/下载/test//log.txt"
 
     def main_server_connect(self):
         try:
@@ -67,10 +69,16 @@ class FTPHandler(object):
                 readf.seek(-5, 2)
                 data = readf.readline()
                 readf.close()
+                now = datetime.now()
+                log_file = open(self.log_file_name, 'ab')
                 if data != "[END]":
                     os.remove(f)
+                    log_file.write("%26s%30s%10s\n" %(now, f, 'False'))
+                    log_file.close()
                 else:
                     self.timecount = 0
+                    log_file.write("%26s%30s%10s\n" %(now, f, 'True'))
+                    log_file.close()
         for d in dirs:
             os.chdir(local_curr_dir)
             self.conn.cwd(ftp_curr_dir)
@@ -79,7 +87,7 @@ class FTPHandler(object):
     def run(self):
         self.walk('.')
         self.timecount += 60
-        print "timecount is: ", self.timecount
+        print "Transport finished..."
 
 def main():
     f = FTPHandler()
