@@ -10,27 +10,38 @@ class FTPHandler(object):
 
     def __init__(self):
         self.timecount = 0
-        self.directory_name = "/home/wenzhiquan/下载/test/"
+        self.directory_name = r"/home/wenzhiquan/下载/test/"
+        self.subdirectory_name = r"subdirectory.txt"
+        self.subdirectory = open(self.subdirectory_name, 'rb').readlines()
+        os.chdir(self.directory_name)
+        for i in range(len(self.subdirectory)):
+            self.subdirectory[i] = self.subdirectory[i][:-1]
+            tmp = str(self.subdirectory[i])
+            if os.path.exists(tmp):
+                continue
+            else:
+                try:
+                    os.mkdir(tmp)
+                except OSError:
+                    print "Faild to make directory..."
 
     def main_server_connect(self):
         try:
             self.conn = FTP('10.108.104.82', 'anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
-            os.chdir(self.directory_name)                # 本地下载目录
             print "Main FTP server connected..."
         except:
             print "Main FTP server connecting faild..."
+            self.backup_server_connect()
 
     def backup_server_connect(self):
         print "Trying to connect to the backup FTP server..."
         try:
             self.conn = FTP('10.108.106.124', 'anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
-            os.chdir(self.directory_name)                # 本地下载目录
             print "Backup FTP server connected..."
         except:
             print "Backup FTP server connecting faild..."
-            self.backup_server_connect()
 
     def get_dirs_files(self):
         u''' 得到当前目录和文件, 放入dir_res列表 '''
@@ -60,19 +71,30 @@ class FTPHandler(object):
                 # print f, "exists!"
                 continue
             # print next_dir, ':', f
-            outf = open(f, 'wb')
+            try:
+                tmp_filename = f[4:-17] + r"/" + f
+                outf = open(tmp_filename, 'wb')
+            except:
+                print "Faild to create local file..."
             try:
                 self.conn.retrbinary('RETR %s' % f, outf.write)
             finally:
                 outf.close()
-                readf = open(f, 'rb')
+                try:
+                    readf = open(tmp_filename, 'rb')
+                except Exception, e:
+                    raise e
                 readf.seek(-5, 2)
                 data = readf.readline()
                 readf.close()
                 now = datetime.now()
-                log_file = open("%s" % (self.directory_name + f[:-16] + "log.txt"), 'ab')
+                try:
+                    tmp_log_file_name = self.directory_name + r"/" + f[4:-17] + r"/" + f[:-16] + "log.txt"
+                    log_file = open(tmp_log_file_name, 'ab')
+                except:
+                    print "Faild to create local log file..."
                 if data != "[END]":
-                    os.remove(f)
+                    os.remove(tmp_filename)
                     log_file.write("%26s%30s%10s\n" %(now, f, 'False'))
                     log_file.close()
                 else:
