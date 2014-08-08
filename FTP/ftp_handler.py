@@ -9,11 +9,18 @@ from datetime import datetime
 class FTPHandler(object):
 
     def __init__(self):
+        global sleeptime
+        sleeptime = 20
+
         self.timecount = 0
         self.directory_name = r"/home/wenzhiquan/下载/test/"
         self.subdirectory_name = r"subdirectory.txt"
+        self.log_directory_name = self.directory_name + r"Log/"
         self.subdirectory = open(self.subdirectory_name, 'rb').readlines()
+
         os.chdir(self.directory_name)
+        if not os.path.exists("Log"):
+            os.mkdir("Log")
         for i in range(len(self.subdirectory)):
             self.subdirectory[i] = self.subdirectory[i][:-1]
             tmp = str(self.subdirectory[i])
@@ -67,8 +74,10 @@ class FTPHandler(object):
         # print "FILES: ", files
         # print "DIRS: ", dirs
         for f in files:
-            if os.path.exists(f):
-                # print f, "exists!"
+            filename = r"./%s" % (f[4:-17] + r"/" + f)
+            compf = filename + r'.COMPLETED'
+            if os.path.exists(filename) or os.path.exists(compf):
+                #print f, "exists!"
                 continue
             # print next_dir, ':', f
             try:
@@ -89,16 +98,19 @@ class FTPHandler(object):
                 readf.close()
                 now = datetime.now()
                 try:
-                    tmp_log_file_name = self.directory_name + r"/" + f[4:-17] + r"/" + f[:-16] + "log.txt"
+                    tmp_log_file_name = self.log_directory_name + f[:-16] + "log.txt"
                     log_file = open(tmp_log_file_name, 'ab')
                 except:
                     print "Faild to create local log file..."
                 if data != "[END]":
+                    # print "Data not ended, remove the file..."
                     os.remove(tmp_filename)
                     log_file.write("%26s%30s%10s\n" %(now, f, 'False'))
                     log_file.close()
                 else:
                     self.timecount = 0
+                    writef = open(tmp_filename, 'ab')
+                    writef.write("%s" %(" " + f))
                     log_file.write("%26s%30s%10s\n" %(now, f, 'True'))
                     log_file.close()
         for d in dirs:
@@ -117,7 +129,7 @@ def main():
     while True:
         try:
             f.run()
-            time.sleep(60)
+            time.sleep(sleeptime)
             if f.timecount >= 600:
                 f.timecount = 0
                 print "No update in main server for a long time..."
