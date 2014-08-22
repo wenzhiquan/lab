@@ -105,13 +105,11 @@ class FTPHandler(object):
                 if data != "[END]":
                     # print "Data not ended, remove the file..."
                     os.remove(tmp_filename)
-                    log_file.write("%26s%30s%10s\n" %(now, f, 'False'))
+                    log_file.write("%26s%30s%10s\n" % (now, f, 'False'))
                     log_file.close()
                 else:
                     self.timecount = 0
-                    writef = open(tmp_filename, 'ab')
-                    writef.write("%s" %(" " + f))
-                    log_file.write("%26s%30s%10s\n" %(now, f, 'True'))
+                    log_file.write("%26s%30s%10s\n" % (now, f, 'True'))
                     log_file.close()
         for d in dirs:
             # os.chdir(local_curr_dir)
@@ -120,7 +118,7 @@ class FTPHandler(object):
 
     def run(self):
         self.walk('.')
-        self.timecount += 60
+        self.timecount += sleeptime
         print "Transport finished..."
 
 def main():
