@@ -1,7 +1,6 @@
 # -*- encoding: utf8 -*-
 
-import os
-import sys
+import os, stat, sys
 from ftplib import FTP
 import time
 from datetime import datetime
@@ -13,7 +12,7 @@ class FTPHandler(object):
         sleeptime = 20
 
         self.timecount = 0
-        self.directory_name = r"/home/wenzhiquan/下载/test/"
+        self.directory_name = r"/home/wen/Documents/test/"
         self.subdirectory_name = r"subdirectory.txt"
         self.log_directory_name = self.directory_name + r"Log/"
         self.subdirectory = open(self.subdirectory_name, 'rb').readlines()
@@ -83,6 +82,7 @@ class FTPHandler(object):
             try:
                 tmp_filename = f[4:-17] + r"/" + f
                 outf = open(tmp_filename, 'wb')
+                os.chmod(tmp_filename, stat.S_IRWXU)
             except:
                 print "Faild to create local file..."
             try:
@@ -109,6 +109,7 @@ class FTPHandler(object):
                     log_file.close()
                 else:
                     self.timecount = 0
+                    os.chmod(tmp_filename, stat.S_IREAD|stat.S_IWRITE|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH)
                     log_file.write("%26s%30s%10s\n" % (now, f, 'True'))
                     log_file.close()
         for d in dirs:
