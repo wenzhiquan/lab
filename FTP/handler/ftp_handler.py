@@ -1,9 +1,10 @@
 # -*- encoding: utf8 -*-
 
-import os, stat, sys
+import os, stat, sys, syslog
 from ftplib import FTP
 import time
 from datetime import datetime
+from FTP.lib.nosql.mongo_util import MongoUtil
 
 class FTPHandler(object):
 
@@ -12,28 +13,34 @@ class FTPHandler(object):
         sleeptime = 20
 
         self.timecount = 0
-        self.directory_name = r"/home/wen/Documents/test/"
-        self.subdirectory_name = r"subdirectory.txt"
+        self.directory_name = r"/home/wen/local/git/hadoop-tran/FTP/test/"
+        self.subdirectory_name = r"FTP/doc/subdirectory.txt"
         self.log_directory_name = self.directory_name + r"Log/"
         self.subdirectory = open(self.subdirectory_name, 'rb').readlines()
-
+        try:
+            self.mongo = MongoUtil("FTP", "filename")
+        except:
+            print "Faild to connect to the database..."
         os.chdir(self.directory_name)
         if not os.path.exists("Log"):
             os.mkdir("Log")
         for i in range(len(self.subdirectory)):
             self.subdirectory[i] = self.subdirectory[i][:-1]
             tmp = str(self.subdirectory[i])
-            if os.path.exists(tmp):
-                continue
-            else:
+            if not os.path.exists(tmp):
                 try:
                     os.mkdir(tmp)
                 except OSError:
                     print "Faild to make directory..."
+        syslog.openlog("ftp client", syslog.LOG_PID|syslog.LOG_PERROR, syslog.LOG_DAEMON)
+        syslog.syslog(syslog.LOG_INFO, "Program started...")
+
 
     def main_server_connect(self):
         try:
-            self.conn = FTP('10.108.104.82', 'anonymous', '')
+	    self.conn = FTP()
+            self.conn.connect('119.57.167.243', 10022)
+	    self.conn.login('anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
             print "Main FTP server connected..."
         except:
@@ -43,7 +50,9 @@ class FTPHandler(object):
     def backup_server_connect(self):
         print "Trying to connect to the backup FTP server..."
         try:
-            self.conn = FTP('10.108.106.124', 'anonymous', '')
+            self.conn = FTP()
+            self.conn.connect('119.57.167.243', 10122)
+	    self.conn.login('anonymous', '')
             self.conn.cwd('/MSSLogData')        # 远端FTP目录
             print "Backup FTP server connected..."
         except:
@@ -56,6 +65,7 @@ class FTPHandler(object):
         files = [f.split(None, 8)[-1] for f in dir_res if f.find('<DIR>') == -1]
         dirs = [f.split(None, 8)[-1] for f in dir_res if f.find('<DIR>') >= 0]
         return (files, dirs)
+
 
     def walk(self, next_dir):
         # print 'Walking to', next_dir
@@ -74,15 +84,16 @@ class FTPHandler(object):
         # print "DIRS: ", dirs
         for f in files:
             filename = r"./%s" % (f[4:-17] + r"/" + f)
-            compf = filename + r'.COMPLETED'
-            if os.path.exists(filename) or os.path.exists(compf):
+            fin_filename = f[4:-17] + r"/" + f[:-4] + "_fin" + f[-4:]
+            db_name = self.directory_name + f[4:-17] + r"/" + f
+            if os.path.exists(filename) or os.path.exists(fin_filename) or self.mongo.get_one({"name": db_name}):
                 #print f, "exists!"
                 continue
             # print next_dir, ':', f
             try:
-                tmp_filename = f[4:-17] + r"/" + f
+                tmp_filename = f[4:-17] + r"/" + f + r'.COMPLETED'
                 outf = open(tmp_filename, 'wb')
-                os.chmod(tmp_filename, stat.S_IRWXU)
+                # os.chmod(tmp_filename, stat.S_IRWXU)
             except:
                 print "Faild to create local file..."
             try:
@@ -93,8 +104,8 @@ class FTPHandler(object):
                     readf = open(tmp_filename, 'rb')
                 except Exception, e:
                     raise e
-                readf.seek(-5, 2)
-                data = readf.readline()
+                readf.seek(-32, 2)
+                data = readf.readlines()
                 readf.close()
                 now = datetime.now()
                 try:
@@ -102,14 +113,19 @@ class FTPHandler(object):
                     log_file = open(tmp_log_file_name, 'ab')
                 except:
                     print "Faild to create local log file..."
-                if data != "[END]":
+                if "[END] %s" %f not in data:
                     # print "Data not ended, remove the file..."
                     os.remove(tmp_filename)
+                    syslog.syslog(syslog.LOG_INFO, "%s\t%s" % (f, 'Transport faild...'))
                     log_file.write("%26s%30s%10s\n" % (now, f, 'False'))
                     log_file.close()
                 else:
                     self.timecount = 0
-                    os.chmod(tmp_filename, stat.S_IREAD|stat.S_IWRITE|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH)
+                    # os.chmod(tmp_filename, stat.S_IREAD|stat.S_IWRITE|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH)
+                    self.mongo.save({"name": db_name})
+                    rename = f[4:-17] + r"/" + f[:-4] + "_fin" + f[-4:]
+                    os.rename(tmp_filename, rename)
+                    syslog.syslog(syslog.LOG_INFO, "%s\t%s" % (f, 'Transport successful...'))
                     log_file.write("%26s%30s%10s\n" % (now, f, 'True'))
                     log_file.close()
         for d in dirs:
@@ -127,6 +143,7 @@ def main():
     f.main_server_connect()
     while True:
         try:
+            print "Client started..."
             f.run()
             time.sleep(sleeptime)
             if f.timecount >= 600:
