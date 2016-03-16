@@ -10,16 +10,20 @@
 @file: sortByTime.py
 @time: 15/12/7 14:28
 """
+from config import config
 
-filename = r"../data/ratings.dat"
-read = open(filename, 'r')
-data = read.readlines()
-read.close()
 
-sorted_lines = sorted(data, key=lambda l: float(l.split('::')[3]), reverse=False)
+def sortByTime():
+    print 'sorting meta data by time......'
+    filename = config.trainFile
+    read = open(filename, 'r')
+    data = read.readlines()
+    read.close()
 
-outfile = r"../result/sortedRatings.txt"
-out = open(outfile, 'w')
-out.write(''.join(sorted_lines))
-out.close()
+    sorted_lines = sorted(data, key=lambda l: float(l.split('::')[3]), reverse=False)
+
+    outfile = config.sortedRatingFile
+    out = open(outfile, 'w')
+    out.write(''.join(sorted_lines))
+    out.close()
 
