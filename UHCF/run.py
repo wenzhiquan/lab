@@ -15,10 +15,12 @@ from datetime import datetime
 from tools.sortByTime import sortByTime
 from tools.combineById import combineById
 from tools.divideTrainAndTest import divideTrainAndTest
+from tools.timeInterval import timeInterval
 from CFU.CFU import CFU
+from CFU.promoteCFU import PromoteCFU
 from core.UHCF import UHCF
 from common.evaluation import Evaluation
-from common.recommandation import generaRecommandList
+from common.recommendation import generaRecommendList
 from common.combineCFUAndTHCCF import combine
 from common.movieAttr import MovieAttr
 from config import config
@@ -29,8 +31,9 @@ if __name__ == '__main__':
     print 'program start......'
     print 'start time :'
     print startTime
-    movieAttr = MovieAttr()
-    movieAttr.commonLabel()
+    # movieAttr = MovieAttr()
+    # movieAttr.commonLabel()
+    # timeInterval()
     if config.needDivideTrainAndTest is True:
         divideTrainAndTest()
     if config.needPreSettle is True:
@@ -40,14 +43,18 @@ if __name__ == '__main__':
         uhcf = UHCF()
         uhcf.generaUserPrefer()
         uhcf.simCalculate()
-        generaRecommandList(config.userSimMatrix)
+        generaRecommendList(config.userSimMatrix)
     if config.needCFU is True:
-        cfu = CFU()
-        cfu.matrix()
-        generaRecommandList()
+        # cfu = CFU()
+        # cfu.matrix()
+        # generaRecommendList()
+        cfu = PromoteCFU()
+        cfu.iuMatrix()
+        # cfu.matrix()
+        # generaRecommendList(config.promoteCFUUserSimMatrix)
     if config.needCombine is True:
         combine()
-        generaRecommandList(config.combineSimMatrix)
+        generaRecommendList(config.combineSimMatrix)
     if config.needEvaluate is True:
         evaluate = Evaluation()
         rap = evaluate.recall_and_precision()
@@ -55,12 +62,17 @@ if __name__ == '__main__':
         print "precision: %5.5f%%" % rap[1]
         fvalue = evaluate.fvalue(rap)
         print "F value: %5.5f%%" % fvalue
-        outfile = r'result/evaluationResult.txt'
+        mae = 0  # evaluate.MAE()
+        print "MAE: %5.5f" % mae
+        # diversity = evaluate.diversity()
+        # print "diversity: %5.5f%%" % diversity
+        outfile = r'result/evaluationResult.csv'
         out = open(outfile, 'a')
-        out.write('n = ' + str(config.n) + ', listLength = ' + str(config.listLength) +
-                  ', G = ' + str(config.G) + ', delta = ' + str(config.delta) +
-                  '::precision = ' + str(rap[0])[:7] + '%, recall = ' + str(rap[1])[:7] +
-                  '%, F value = ' + str(fvalue)[:7] + '%\n')
+        spliter = ','
+        out.write(str(config.n) + spliter + str(config.listLength) +
+                  spliter + str(config.G) + spliter + str(config.delta) +
+                  spliter + str(rap[0])[:7] + '%' + spliter + str(rap[1])[:7] +
+                  '%' + spliter + str(fvalue)[:7] + '%' + spliter + str(mae)[:7] + spliter + '\n')
         out.close()
     endTime = datetime.now()
     print 'program finished......'

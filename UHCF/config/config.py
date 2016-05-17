@@ -31,6 +31,7 @@ metaMovieFile = path.join(path.dirname(argv[0]), conf.get('fileconf', 'metaMovie
 trainFile = path.join(path.dirname(argv[0]), r'result/trainRatings.txt')
 testFile = path.join(path.dirname(argv[0]), r'result/testRatings.txt')
 uiDictFile = path.join(path.dirname(argv[0]), r'result/uiDict.dict')
+iuDictFile = path.join(path.dirname(argv[0]), r'result/iuDict.dict')
 # sorted file为将元数据按照时间先后顺序排列的文件
 sortedRatingFile = path.join(path.dirname(argv[0]), r'result/sortedRatings.txt')
 
@@ -46,14 +47,18 @@ listLength = 50  # 推荐列表长度
 userSimMatrix = path.join(path.dirname(argv[0]), r'result/userSimMatrix.dict')
 CFUUserSimMatrix = path.join(path.dirname(argv[0]), r'result/CFUUserSimMatrix.dict')
 combineSimMatrix = path.join(path.dirname(argv[0]), r'result/combineSimMatrix.dict')
+CFUItemSimMatrix = path.join(path.dirname(argv[0]), r'result/CFUItemSimMatrix.dict')
+promoteCFUUserSimMatrix = path.join(path.dirname(argv[0]), r'result/promoteCFUUserSimMatrix.dict')
+recommendDict = path.join(path.dirname(argv[0]), r'result/recommend.dict')
+timeIntercalDict = path.join(path.dirname(argv[0]), r'result/timeInterval.dict')
 
 # 用于存放推荐列表的文件
-recommandListFile = path.join(path.dirname(argv[0]), r'result/recommandGradeList.txt')
+recommendListFile = path.join(path.dirname(argv[0]), r'result/recommendGradeList.txt')
 
 needDivideTrainAndTest = False  # 是否需要划分测试集和训练集
 needPreSettle = False  # 是否需要预处理数据
 needCFU = False  # 是否需要运行CFU
-needUHCF = False  # 是否需要进行UHCF的运算
+needUHCF = True  # 是否需要进行UHCF的运算
 needCombine = False  # 是否需要合并CFU和UHCF用户矩阵
 needEvaluate = True  # 是否需要进行评价
 

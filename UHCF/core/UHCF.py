@@ -18,8 +18,11 @@ from lib import stdLib
 
 class UHCF(object):
     def __init__(self):
-        self.userDict = {}  # 用于存放用户及其偏好的dictionary
-        self.userPreferRateDict = {}  # 用于存放用户及其各个标签偏好比率的dictionary
+        self.userDict = dict()  # 用于存放用户及其偏好的dictionary
+        self.userPreferRateDict = dict()  # 用于存放用户及其各个标签偏好比率的dictionary
+        self.timeIntervalDict = dict()
+        self.now = datetime(2016, 5, 17)  # datetime.utcnow()
+        self.timeInterval()
 
     # 生成用户偏好的函数
     def generaUserPrefer(self):
@@ -34,7 +37,7 @@ class UHCF(object):
             count += 1
             self.labelPreferCal(i)
             if count % int(length * config.percentage) == 0:
-                print '%f%%' % (count * 100 / (length * 2))
+                print '%f%%' % (count * 100 / (length))
         # self.labelPreferRate()
         # self.userDict = dict()
         # for i in data:
@@ -42,12 +45,23 @@ class UHCF(object):
         #     self.labelPreferCal(i, False)
         #     if count % int(length * config.percentage) == 0:
         #         print '%f%%' % (count * 100 / (length * 2))
+        # 对用户标签偏好进行归一化
+        for i in self.userDict:
+            maxV = minV = self.userDict[i][0]
+            for j in range(1, config.labelLength):
+                if self.userDict[i][j] > maxV:
+                    maxV = self.userDict[i][j]
+                if self.userDict[i][j] < minV:
+                    minV = self.userDict[i][j]
+            for j in range(config.labelLength):
+                self.userDict[i][j] = (self.userDict[i][j] - minV) / (maxV - minV)
+
 
         outfile = config.userPreferFile
         out = open(outfile, 'w')
         for i in self.userDict:
             result = ""
-            for j in range(19):
+            for j in range(config.labelLength):
                 if j in self.userDict[i]:
                     result += str(self.userDict[i][j]) + config.subSeparator
                 else:
@@ -61,10 +75,12 @@ class UHCF(object):
     def labelPreferCal(self, line, isFirst = True):
         tmp = line[:-1].split(config.separator)
         userId = tmp[0]
-        movieId = tmp[1]
+        # movieId = tmp[1]
         grade = float(tmp[2])
-        RateTime = datetime.utcfromtimestamp(float(tmp[3]))
-        T = (datetime.utcnow() - RateTime).days  # 将打分时间距今的时间转换为天数
+        rateTime = datetime.utcfromtimestamp(float(tmp[3]))
+        T = (self.now - rateTime - self.timeIntervalDict[userId]).days + 1  # 将打分时间距今的时间转换为天数
+        if T <= 0:
+            print "T: %d, id: %s" % (T, userId)
         labels = tmp[4]
         labelArr = labels.split(config.subSeparator)
         labelLen = 0  # 电影所含的标签数量
@@ -72,7 +88,7 @@ class UHCF(object):
             if i == '1':
                 labelLen += 1
 
-        if isFirst is True:
+        if isFirst is True:  # 是否为第一次进行训练,是否需要基于偏好进行在训练
             aGrade = grade / labelLen  # 每个标签的平均得分 TODO:按照用户以前生成的偏好对不同标签进行偏置
 
         self.userDict.setdefault(userId, {})
@@ -83,8 +99,9 @@ class UHCF(object):
             if labelArr[j] == '1':
                 if isFirst is False:
                     aGrade = grade * self.userPreferRateDict[userId][j]
-                self.userDict[userId][j] += aGrade / pow(T + config.delta, config.G)
+                self.userDict[userId][j] += aGrade / pow(T, config.G)
 
+    # 在训练时为每个标签计算评分
     def labelPreferRate(self):
         allRate = 0.0
         for user in self.userDict:
@@ -147,4 +164,24 @@ class UHCF(object):
         stdLib.dumpData(userMatrix, outfile)
 
         print 'finished......'
+
+    def timeInterval(self):
+        print 'calculating time interval......'
+        filename = config.ratingWithLabelFile
+        read = open(filename, 'r')
+        data = read.readlines()
+        read.close()
+
+        initTime = datetime.utcfromtimestamp(0)
+
+        for i in data:
+            tmp = i[:-1].split(config.separator)
+            userId = tmp[0]
+            time = datetime.utcfromtimestamp(float(tmp[3]))
+            self.timeIntervalDict.setdefault(userId, initTime)
+            if time > self.timeIntervalDict[userId]:
+                self.timeIntervalDict[userId] = time
+
+        for userId in self.timeIntervalDict:
+            self.timeIntervalDict[userId] = self.now - self.timeIntervalDict[userId]
 

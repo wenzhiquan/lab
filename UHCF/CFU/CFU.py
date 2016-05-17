@@ -19,7 +19,12 @@ from config import config
 
 class CFU():
     def __init__(self):
-        pass
+        self.r = 0.145380973896
+        iuDict = stdLib.loadData(config.iuDictFile)
+        self.iuAverageDict = dict()
+        for movie in iuDict:
+            avg = sum([iuDict[movie][i] for i in iuDict[movie]]) / float(len(iuDict[movie]))
+            self.iuAverageDict.setdefault(movie, avg)
 
     def matrix(self, uiDict = None, knn = 200, filtrate = 5):
         '''
@@ -44,10 +49,10 @@ class CFU():
                 vec2 = uiDict[j]
                 if len(vec2) < filtrate:
                     continue
-                grade = self.adjustedCosine(vec1, vec2)
-                if grade > 0:
+                similarity = self.cosine_scored(vec1, vec2)
+                if similarity > 0:
                     matrixDict.setdefault(i, list())
-                    matrixDict[i].append((j, grade))
+                    matrixDict[i].append((j, similarity))
             if i in matrixDict:
                 matrixDict[i] = heapq.nlargest(knn, matrixDict[i], key=lambda x: x[1])
             if COUNTER % int(PROCESS * config.percentage) == 0:
@@ -72,6 +77,42 @@ class CFU():
         else:
             similarity = 0
         return similarity
+
+    def dualDecentCorre(self, vec1, vec2):
+        su = 0.0
+        l1 = 0.0
+        l2 = 0.0
+        avg1 = sum([vec1[i] for i in vec1]) / float(len(vec1))
+        avg2 = sum([vec2[i] for i in vec2]) / float(len(vec2))
+        for i in vec1:
+            if i in vec2:
+                su += (vec1[i] - avg1 - self.iuAverageDict[i] + self.r) \
+                      * (vec2[i] - avg2 - self.iuAverageDict[i] + self.r)
+                l1 += math.pow((vec1[i] - avg1 - self.iuAverageDict[i] + self.r), 2)
+                l2 += math.pow((vec2[i] - avg2 - self.iuAverageDict[i] + self.r), 2)
+        temp = l1 * l2
+        if temp != 0:
+            similarity = su / math.sqrt(temp)
+        else:
+            similarity = 0
+        return similarity
+
+    def cosine_scored(self, vec1, vec2):
+        su = 0.0
+        l1 = 0.0
+        l2 = 0.0
+        for i in vec1:
+            if i in vec2:
+                su += vec1[i] * vec2[i]
+                l1 += math.pow(vec1[i],2)
+                l2 += math.pow(vec2[i],2)
+        temp = l1 * l2
+        if temp != 0:
+            similarity = su / math.sqrt(temp)
+        else:
+            similarity = 0
+        return similarity
+
 
 if __name__ == '__main__':
     cfu = CFU()

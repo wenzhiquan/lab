@@ -13,10 +13,11 @@
 """
 from config import config
 import math
+from lib import stdLib
 
 class Evaluation(object):
     def __init__(self, filename=None):
-        resultFile = filename or config.recommandListFile
+        resultFile = filename or config.recommendListFile
         result = open(resultFile).readlines()
         test = open(config.testFile).readlines()
         self.resultData = {}
@@ -24,14 +25,15 @@ class Evaluation(object):
         for i in result:
             tmp = i[:-1].split(config.separator)
             userId = tmp[0]
-            recommandList = tmp[1].split(config.subSeparator)
-            self.resultData.setdefault(userId, recommandList)
+            recommendList = tmp[1].split(config.subSeparator)
+            self.resultData.setdefault(userId, recommendList)
         for i in test:
             tmp = i[:-1].split(config.separator)
             userId = tmp[0]
             movieId = tmp[1]
-            self.testData.setdefault(userId, [])
-            self.testData[userId].append(movieId)
+            grade = float(tmp[2])
+            self.testData.setdefault(userId, dict())
+            self.testData[userId].setdefault(movieId, grade)
 
 
     def recall_and_precision(self):
@@ -63,18 +65,41 @@ class Evaluation(object):
             return 0
         return rap[0] * rap[1] * 2 / (rap[0] + rap[1])
 
+    def MAE(self):
+        """
+        Get the recall and precision
+        """
+        result = stdLib.loadData(config.recommendDict)
+        test = self.testData
+        mae = 0
+        count = 0
+        for user in result.keys():
+            tu = test.get(user, {})
+            for item in result[user]:
+                if item in tu:
+                    mae += abs(result[user][item] - tu[item])
+                else:
+                    mae += result[user][item]
+                count += 1
+        mae /= count
+        return mae
+
+
     def coverage(self, train=None, test=None):
-        train = train or self.train_data
-        test = test or self.test_data
+        train = train or self.resultData
+        length = len(train)
         recommend_items = set()
         all_items = set()
+        count = 1.0
         for user in train.keys():
-            for item in train[user].keys():
+            count += 1
+            for item in train[user]:
                 all_items.add(item)
-            rank = self.rank[user]
-                   # or self.recommend(user, k=k, n_item=n_item)
+            rank = stdLib.loadData(config.recommendDict)[user]
             for item, w in rank.items():
                 recommend_items.add(item)
+            if count % int(length * config.percentage) == 0:
+                print '%.3f%%' % (count * 100 / length)
         if len(all_items) != 0:
             cov = len(recommend_items) / (len(all_items) * 1.0)
             return cov
@@ -110,20 +135,20 @@ class Evaluation(object):
         """
         Get the diversity
         """
-        train = train or self.train_data
-        test = test or self.test_data
-        item_sim = item_sim or self.item_sim
+        train = train or self.resultData
+        test = test or self.testData
+        item_sim = item_sim or stdLib.loadData(config.CFUItemSimMatrix)
         item_diversity = 0
 
         for user in train.keys():
             tmp_numerator = 0
-            rank = self.rank[user]
-                   # or self.recommend(user, k=k, n_item=n_item)
+            rank = stdLib.loadData(config.recommendDict)[user]
             for item_i, wi in rank.items():
                 for item_j, wj in rank.items():
                     if item_i == item_j:
                         continue
-                    tmp_numerator += item_sim[item_i][item_j]
+                    if item_j in item_sim[item_j]:
+                        tmp_numerator += item_sim[int(item_i)][int(item_j)]
             item_diversity += 1 - tmp_numerator / (len(rank) * (len(rank) - 1) * 1.0)
         if len(train) != 0:
             item_diversity /= len(train)

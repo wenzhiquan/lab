@@ -29,6 +29,7 @@ def combine():
         simDict.setdefault(user, {})
         for tuples in simData[user]:
             simDict[user].setdefault(tuples[0], tuples[1])
+
     for user in CFUDict:
         for simUser in CFUDict[user]:
             if simUser in simDict[user]:
